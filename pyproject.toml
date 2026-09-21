@@ -20,5 +20,18 @@ cmake.version = ">=3.16"
 wheel.packages = ["skeepto"]
 build-dir = "build/{wheel_tag}"
 
+# CPython 3.12 manylinux only for now. No musllinux / PyPy. No sdist here.
+[tool.cibuildwheel]
+build = "cp312-manylinux_x86_64"
+skip = "pp* *-musllinux_*"
+manylinux-x86_64-image = "manylinux_2_28"
+build-verbosity = 1
+test-requires = "pytest"
+test-command = "pytest {project}/tests"
+
+[tool.cibuildwheel.linux]
+before-all = "bash {project}/scripts/cibw-before-all.sh"
+environment = { SK_ENGINE_DIR = "/opt/skeepto-engine", CMAKE_ARGS = "-DSK_ENGINE_DIR=/opt/skeepto-engine -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF", CFLAGS = "-fPIC -fno-lto", CXXFLAGS = "-fPIC -fno-lto", LDFLAGS = "-fno-lto" }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

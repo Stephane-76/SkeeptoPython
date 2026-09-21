@@ -22,6 +22,40 @@ Projects/
 
 Override the engine path with `SK_ENGINE_DIR` if they are not siblings.
 
+## Install without compiling
+
+A **wheel** (`.whl`) already contains `_core`. The person who `pip install`s it
+needs **Python 3.12** and a venv — not CMake, not a C++ compiler, not
+skeepto-engine.
+
+CI builds wheels for **macOS arm64**, **Windows amd64**, and **Linux
+manylinux x86_64**. No source tarball is attached, so `pip` will not try to
+compile. A `win_amd64` wheel will not install on a Mac (and the reverse).
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install path/to/skeepto-0.1.0-*.whl
+```
+
+Wheels are attached to
+[GitHub Releases](https://github.com/Stephane-76/SkeeptoPython/releases)
+when you push a `v*` tag (no Windows PC required):
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Example after that release — pick the wheel for **your** OS (Mac → `macosx_*_arm64`):
+
+```bash
+pip install https://github.com/Stephane-76/SkeeptoPython/releases/download/v0.1.0/skeepto-0.1.0-cp312-cp312-macosx_14_0_arm64.whl
+```
+
+Other Python versions still use the source build below (compiler required).
+PyPI is optional later; same wheels, `pip install skeepto`.
+
 ## Prerequisites
 
 Build [skeepto-engine](https://github.com/Stephane-76/SkeeptoEngine) **first**. This

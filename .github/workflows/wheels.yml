@@ -1,0 +1,156 @@
+# Prebuilt wheels (Windows amd64, macOS arm64, manylinux x86_64, CPython 3.12).
+# Wheels only — no sdist, so pip never tries to compile on the user machine.
+# Tag v* to attach them to a GitHub Release. workflow_dispatch builds artifacts only.
+name: Wheels
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build manylinux wheels
+        uses: pypa/cibuildwheel@v2.23.3
+        env:
+          SKEEPTO_ENGINE_TOKEN: ${{ secrets.SKEEPTO_ENGINE_TOKEN }}
+          CIBW_ENVIRONMENT_PASS_LINUX: SKEEPTO_ENGINE_TOKEN
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux
+          path: wheelhouse/*.whl
+
+  macos:
+    runs-on: macos-latest
+    env:
+      SK_ENGINE_DIR: ${{ github.workspace }}/skeepto-engine
+      CMAKE_ARGS: -DSK_ENGINE_DIR=${{ github.workspace }}/skeepto-engine
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
+    steps:
+      - name: Checkout skeepto-python
+        uses: actions/checkout@v5
+        with:
+          path: skeepto-python
+
+      - name: Checkout skeepto-engine
+        uses: actions/checkout@v5
+        with:
+          repository: Stephane-76/SkeeptoEngine
+          path: skeepto-engine
+          token: ${{ secrets.SKEEPTO_ENGINE_TOKEN || github.token }}
+
+      - name: Install native deps
+        run: brew install cmake libzip pugixml
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build engine
+        working-directory: skeepto-engine
+        run: |
+          cmake -B build-unix -DSK_PLATFORM=unix -DCMAKE_BUILD_TYPE=Release -DSK_BUILD_TESTS=OFF \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
+          cmake --build build-unix --parallel
+
+      - name: Wheel, install, test
+        working-directory: skeepto-python
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -U pip wheel pytest delocate
+          .venv/bin/python -m pip wheel . --no-deps --wheel-dir dist
+          .venv/bin/delocate-wheel -v dist/*.whl
+          .venv/bin/python -m pip install dist/*.whl
+          .venv/bin/python -m pytest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos
+          path: skeepto-python/dist/*.whl
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout skeepto-python
+        uses: actions/checkout@v5
+        with:
+          path: skeepto-python
+
+      - name: Checkout skeepto-engine
+        uses: actions/checkout@v5
+        with:
+          repository: Stephane-76/SkeeptoEngine
+          path: skeepto-engine
+          token: ${{ secrets.SKEEPTO_ENGINE_TOKEN || github.token }}
+
+      - name: Forward-slash engine path
+        shell: pwsh
+        run: |
+          $engine = (Join-Path $env:GITHUB_WORKSPACE 'skeepto-engine').Replace('\', '/')
+          Add-Content -Path $env:GITHUB_ENV -Value "SK_ENGINE_DIR=$engine"
+          Add-Content -Path $env:GITHUB_ENV -Value "CMAKE_ARGS=-DSK_ENGINE_DIR=$engine"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build engine
+        working-directory: skeepto-engine
+        run: |
+          cmake -A x64 -B build-windows -DSK_PLATFORM=windows -DSK_CONFIGS=Release -DSK_BUILD_TESTS=OFF
+          cmake --build build-windows --config Release --parallel
+
+      - name: Wheel, install, test
+        working-directory: skeepto-python
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $py = Join-Path $pwd '.venv\Scripts\python.exe'
+          & $py -m pip install -U pip wheel pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $py -m pip wheel . --no-deps --wheel-dir dist
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $whl = Get-ChildItem -Path dist -Filter *.whl | Select-Object -First 1
+          if (-not $whl) { Write-Error "no wheel in dist/"; exit 1 }
+          & $py -m pip install $whl.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $py -m pytest
+          exit $LASTEXITCODE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows
+          path: skeepto-python/dist/*.whl
+
+  release:
+    needs: [linux, macos, windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish GitHub Release (wheels only)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.whl
+          generate_release_notes: true
+          fail_on_unmatched_files: true
