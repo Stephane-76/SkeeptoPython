@@ -12,7 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SK_ENGINE_DIR: ${{ github.workspace }}/skeepto-engine
-      CMAKE_ARGS: -DSK_ENGINE_DIR=${{ github.workspace }}/skeepto-engine
+      # Inherited by ExternalProject children. Static .a must be PIC to link
+      # into the Python .so (R_X86_64_TPOFF32 / hidden TLS otherwise).
+      CFLAGS: -fPIC
+      CXXFLAGS: -fPIC
+      CMAKE_ARGS: >-
+        -DSK_ENGINE_DIR=${{ github.workspace }}/skeepto-engine
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF
     steps:
       - name: Checkout skeepto-python
         uses: actions/checkout@v5
@@ -38,11 +44,16 @@ jobs:
       - name: Build engine
         working-directory: skeepto-engine
         run: |
-          cmake -B build-unix -DSK_PLATFORM=unix -DCMAKE_BUILD_TYPE=Release -DSK_BUILD_TESTS=OFF
+          cmake -B build-unix -DSK_PLATFORM=unix -DCMAKE_BUILD_TYPE=Release -DSK_BUILD_TESTS=OFF \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
           cmake --build build-unix --parallel
 
       - name: Build and test Python
         working-directory: skeepto-python
+        env:
+          CFLAGS: -fPIC -fno-lto
+          CXXFLAGS: -fPIC -fno-lto
+          LDFLAGS: -fno-lto
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install -U pip
@@ -51,9 +62,6 @@ jobs:
 
   windows:
     runs-on: windows-latest
-    env:
-      SK_ENGINE_DIR: ${{ github.workspace }}/skeepto-engine
-      CMAKE_ARGS: -DSK_ENGINE_DIR=${{ github.workspace }}/skeepto-engine
     steps:
       - name: Checkout skeepto-python
         uses: actions/checkout@v5
@@ -66,6 +74,13 @@ jobs:
           repository: Stephane-76/SkeeptoEngine
           path: skeepto-engine
           token: ${{ secrets.SKEEPTO_ENGINE_TOKEN || github.token }}
+
+      - name: Forward-slash engine path
+        shell: pwsh
+        run: |
+          $engine = (Join-Path $env:GITHUB_WORKSPACE 'skeepto-engine').Replace('\', '/')
+          Add-Content -Path $env:GITHUB_ENV -Value "SK_ENGINE_DIR=$engine"
+          Add-Content -Path $env:GITHUB_ENV -Value "CMAKE_ARGS=-DSK_ENGINE_DIR=$engine"
 
       - uses: actions/setup-python@v5
         with:
@@ -98,6 +113,11 @@ jobs:
         shell: pwsh
         run: |
           python -m venv .venv
-          .\.venv\Scripts\python.exe -m pip install -U pip
-          .\.venv\Scripts\python.exe -m pip install -e ".[test]"
-          .\.venv\Scripts\python.exe -m pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $py = Join-Path $pwd '.venv\Scripts\python.exe'
+          & $py -m pip install -U pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $py -m pip install -e ".[test]"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $py -m pytest
+          exit $LASTEXITCODE

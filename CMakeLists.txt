@@ -41,8 +41,14 @@ endif()
 # --- Engine (prebuilt) -------------------------------------------------------
 set(SK_ENGINE_DIR "" CACHE PATH "Path to the skeepto-engine checkout")
 if(SK_ENGINE_DIR STREQUAL "")
-	set(SK_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../skeepto-engine")
+	if(DEFINED ENV{SK_ENGINE_DIR} AND NOT "$ENV{SK_ENGINE_DIR}" STREQUAL "")
+		set(SK_ENGINE_DIR "$ENV{SK_ENGINE_DIR}")
+	else()
+		set(SK_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../skeepto-engine")
+	endif()
 endif()
+# Windows CMAKE_ARGS: D:\a\... backslashes are CMake escapes (\a eats the path).
+file(TO_CMAKE_PATH "${SK_ENGINE_DIR}" SK_ENGINE_DIR)
 get_filename_component(SK_ENGINE_DIR "${SK_ENGINE_DIR}" ABSOLUTE)
 
 if(NOT EXISTS "${SK_ENGINE_DIR}/Libraries/SkSpreadSheet/include/SkApi.hpp")
@@ -186,6 +192,9 @@ endif()
 # Circular refs between SkRoot / SkFormat / SkSpreadSheet: repeat the archives
 # (Apple ld) or start-group (GNU ld).
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	# Python sysconfig often injects -flto; engine .a is not LTO bitcode.
+	target_compile_options(_core PRIVATE -fno-lto)
+	target_link_options(_core PRIVATE -fno-lto)
 	target_link_libraries(_core PRIVATE
 		-Wl,--start-group ${_SK_LIBS} -Wl,--end-group)
 else()
