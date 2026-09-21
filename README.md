@@ -27,17 +27,35 @@ Override the engine path with `SK_ENGINE_DIR` if they are not siblings.
 Always use a **virtualenv**. Never `sudo pip` and never install into Homebrew
 or the macOS system interpreter.
 
+**Unix / macOS**
+
 ```bash
-# 1. Build the engine (once, in skeepto-engine)
+# 1. Engine (skeepto-engine)
 cd ../skeepto-engine
 cmake -B build-unix
 cmake --build build-unix --parallel
+# Release (no leak counters):
+#   cmake -B build-unix -DCMAKE_BUILD_TYPE=Release
+#   cmake --build build-unix --parallel
 
-# 2. Isolated venv (in skeepto-python)
+# 2. Python (skeepto-python)
 cd ../skeepto-python
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate
+pip install -e ".[test]"
+pytest
+```
 
+**Windows** (Visual Studio + x64, Release — matches `windows/lib/Release`)
+
+```bat
+cd ..\skeepto-engine
+cmake -A x64 -B build-windows -DSK_PLATFORM=windows -DSK_CONFIGS=Release
+cmake --build build-windows --config Release --parallel
+
+cd ..\skeepto-python
+python -m venv .venv
+.venv\Scripts\activate
 pip install -e ".[test]"
 pytest
 ```
@@ -66,30 +84,6 @@ with SpreadSheet() as ss:
     ss.recalculate_all()
     print(ss.get_value("B1"))
 ```
-
-`tApplication` is a process-wide singleton in the engine: one Python process,
-one engine. Several workbooks on one `SpreadSheet` are fine. Prefer
-`with SpreadSheet() as ss:` so the UI object is destroyed before process exit.
-
-A **DEBUG** engine (`_DEBUGLeak`) can print leftover `tClass` counts when
-`tApplication` is destroyed. The Python module turns that **exit dump off**
-so pytest stays readable. To see it:
-
-```bash
-SK_DEBUG_LEAK=1 pytest
-```
-
-Or call `skeepto.debug_memory()` yourself. A **RELEASE** engine has no
-counter and no dump.
-
-## What this wraps
-
-`SpreadSheet` is `tUISpreadSheet` — the same class bound to JavaScript as
-`UISpreadSheet` in `SkReactSpreadSheet`. Method names are snake_case
-(`new_workbook`, `get_value`, `json_view`, …) instead of PascalCase.
-
-Internals (`tCell*`, `tSheet*`, `tClass`) are not exposed. `.xlsx` goes through
-`SkExcel` (`open_xlsx` / `save_xlsx`).
 
 API reference (default sheet, undo, Excel, …): [doc.md](doc.md).
 
