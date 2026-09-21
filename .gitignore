@@ -32,5 +32,8 @@ cmake-build-*/
 *.xcodeproj/
 *.xcworkspace/
 
+# Generated xlsx from tests
+excel/
+
 # OS
 .DS_Store
