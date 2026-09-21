@@ -22,6 +22,34 @@ Projects/
 
 Override the engine path with `SK_ENGINE_DIR` if they are not siblings.
 
+## Prerequisites
+
+Build [skeepto-engine](https://github.com/Stephane-76/SkeeptoEngine) **first**. This
+package only links the static libs; it does not compile the engine.
+
+All platforms:
+
+- **Python** 3.10 or newer (use a venv)
+- **CMake** 3.16 or newer
+- A **C++20** compiler
+- **Git** (engine CMake fetches third-party repos)
+- A sibling `skeepto-engine` checkout, already built
+
+**Unix / macOS**
+
+- Apple Clang (Xcode Command Line Tools) or GCC
+- **libzip** and **pugixml**: Homebrew (`libzip`, `pugixml`) or
+  `libzip-dev` / `libpugixml-dev` on Debian/Ubuntu
+
+**Windows**
+
+- **Visual Studio 2022** (or later) with the Desktop C++ workload, **x64**
+- Engine **Release** (`windows/lib/Release`) — libzip/zlib are built by the
+  engine CMake into `third-party/`
+
+`pip install -e .` fetches **pybind11** into the build tree. `pytest` comes
+from `pip install -e ".[test]"`.
+
 ## Do not pollute the system Python
 
 Always use a **virtualenv**. Never `sudo pip` and never install into Homebrew
