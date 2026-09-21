@@ -12,7 +12,10 @@ __pycache__/
 .mypy_cache/
 
 # Native extension / packaging
+# scikit-build uses build/; cmake -B build-unix (and other -B names) must be listed too.
 build/
+build-unix/
+build-*/
 dist/
 _skbuild/
 *.so
