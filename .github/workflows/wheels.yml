@@ -73,7 +73,11 @@ jobs:
           .venv/bin/python -m pip wheel . --no-deps --wheel-dir dist
           .venv/bin/delocate-wheel -v dist/*.whl
           .venv/bin/python -m pip install dist/*.whl
-          .venv/bin/python -m pytest
+          # pytest would add the repo (local skeepto/ without _core) to sys.path.
+          rm -rf /tmp/skeepto-tests
+          cp -R tests /tmp/skeepto-tests
+          ROOT="$PWD"
+          (cd /tmp/skeepto-tests && "$ROOT/.venv/bin/python" -m pytest)
 
       - uses: actions/upload-artifact@v4
         with:
@@ -127,6 +131,11 @@ jobs:
           if (-not $whl) { Write-Error "no wheel in dist/"; exit 1 }
           & $py -m pip install $whl.FullName
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # pytest would add the repo (local skeepto/ without _core) to sys.path.
+          $dest = Join-Path $env:TEMP 'skeepto-tests'
+          if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+          Copy-Item -Recurse (Join-Path $pwd 'tests') $dest
+          Set-Location $dest
           & $py -m pytest
           exit $LASTEXITCODE
 

@@ -26,12 +26,15 @@ build = "cp312-manylinux_x86_64"
 skip = "pp* *-musllinux_*"
 manylinux-x86_64-image = "manylinux_2_28"
 build-verbosity = 1
+archs = "x86_64"
 test-requires = "pytest"
-test-command = "pytest {project}/tests"
+# Copy tests out of the repo: pytest adds rootdir to sys.path and the local
+# skeepto/ package (no _core) would shadow the installed wheel.
+test-command = "bash -c 'rm -rf /tmp/skeepto-tests && cp -a {project}/tests /tmp/skeepto-tests && cd /tmp/skeepto-tests && pytest -q'"
 
 [tool.cibuildwheel.linux]
 before-all = "bash {project}/scripts/cibw-before-all.sh"
-environment = { SK_ENGINE_DIR = "/opt/skeepto-engine", CMAKE_ARGS = "-DSK_ENGINE_DIR=/opt/skeepto-engine -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF", CFLAGS = "-fPIC -fno-lto", CXXFLAGS = "-fPIC -fno-lto", LDFLAGS = "-fno-lto" }
+environment = { SK_ENGINE_DIR = "/tmp/skeepto-engine", CMAKE_ARGS = "-DSK_ENGINE_DIR=/tmp/skeepto-engine -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF", CFLAGS = "-fPIC -fno-lto", CXXFLAGS = "-fPIC -fno-lto", LDFLAGS = "-fno-lto" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
