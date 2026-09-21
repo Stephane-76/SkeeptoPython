@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "skeepto"
 version = "0.1.0"
-description = "Python bindings for the Skeepto spreadsheet engine"
+description = "A real spreadsheet engine for Python — competitor to Excel and Google Sheets. Formulas, incremental recalc, and native .xlsx read/write via skeepto-engine. Not a DataFrame wrapper."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

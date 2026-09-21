@@ -95,4 +95,4 @@ API reference (default sheet, undo, Excel, …): [doc.md](doc.md).
 
 ## License
 
-MIT.
+[MIT](LICENSE) © 2026 Stéphane Allez.

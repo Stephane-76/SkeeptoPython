@@ -1,0 +1,103 @@
+# Build skeepto-engine (sibling) then the Python extension on Unix and Windows.
+# If SkeeptoEngine is private, add a PAT as secret SKEEPTO_ENGINE_TOKEN.
+name: CMake
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  unix:
+    runs-on: ubuntu-latest
+    env:
+      SK_ENGINE_DIR: ${{ github.workspace }}/skeepto-engine
+      CMAKE_ARGS: -DSK_ENGINE_DIR=${{ github.workspace }}/skeepto-engine
+    steps:
+      - name: Checkout skeepto-python
+        uses: actions/checkout@v5
+        with:
+          path: skeepto-python
+
+      - name: Checkout skeepto-engine
+        uses: actions/checkout@v5
+        with:
+          repository: Stephane-76/SkeeptoEngine
+          path: skeepto-engine
+          token: ${{ secrets.SKEEPTO_ENGINE_TOKEN || github.token }}
+
+      - name: Install native deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libzip-dev libpugixml-dev zlib1g-dev
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build engine
+        working-directory: skeepto-engine
+        run: |
+          cmake -B build-unix -DSK_PLATFORM=unix -DCMAKE_BUILD_TYPE=Release -DSK_BUILD_TESTS=OFF
+          cmake --build build-unix --parallel
+
+      - name: Build and test Python
+        working-directory: skeepto-python
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -U pip
+          .venv/bin/python -m pip install -e ".[test]"
+          .venv/bin/python -m pytest
+
+  windows:
+    runs-on: windows-latest
+    env:
+      SK_ENGINE_DIR: ${{ github.workspace }}/skeepto-engine
+      CMAKE_ARGS: -DSK_ENGINE_DIR=${{ github.workspace }}/skeepto-engine
+    steps:
+      - name: Checkout skeepto-python
+        uses: actions/checkout@v5
+        with:
+          path: skeepto-python
+
+      - name: Checkout skeepto-engine
+        uses: actions/checkout@v5
+        with:
+          repository: Stephane-76/SkeeptoEngine
+          path: skeepto-engine
+          token: ${{ secrets.SKEEPTO_ENGINE_TOKEN || github.token }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build engine
+        working-directory: skeepto-engine
+        run: |
+          cmake -A x64 -B build-windows -DSK_PLATFORM=windows -DSK_CONFIGS=Release -DSK_BUILD_TESTS=OFF
+          cmake --build build-windows --config Release --parallel
+
+      - name: Dump MSVC / CMake errors
+        if: failure()
+        shell: pwsh
+        working-directory: skeepto-engine
+        run: |
+          Write-Host "==== error C / LNK / CMake Error / MSB8066 ===="
+          Get-ChildItem -Path . -Recurse -Include *.log,*.txt,BuildLog.htm -ErrorAction SilentlyContinue |
+            ForEach-Object {
+              $hits = Select-String -Path $_.FullName -Pattern "error C[0-9]+","error LNK","CMake Error","MSB8066","FAILED:" |
+                Select-Object -First 30
+              if ($hits) {
+                Write-Host "==== $($_.FullName) ===="
+                $hits | ForEach-Object { $_.Line }
+              }
+            }
+
+      - name: Build and test Python
+        working-directory: skeepto-python
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install -U pip
+          .\.venv\Scripts\python.exe -m pip install -e ".[test]"
+          .\.venv\Scripts\python.exe -m pytest
