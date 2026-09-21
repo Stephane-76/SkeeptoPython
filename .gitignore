@@ -1,0 +1,33 @@
+# Virtualenv — never install into the system Python
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Native extension / packaging
+build/
+dist/
+_skbuild/
+*.so
+*.dylib
+*.pyd
+*.dll
+
+# CMake / IDE
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+.idea/
+.vscode/
+*.xcodeproj/
+*.xcworkspace/
+
+# OS
+.DS_Store
