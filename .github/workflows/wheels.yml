@@ -39,7 +39,10 @@ jobs:
           code=${PIPESTATUS[0]}
           if [[ "$code" -ne 0 ]]; then
             echo "::error::manylinux wheel failed with exit ${code}"
-            tail -n 60 "$GITHUB_WORKSPACE/skeepto-python/linux-wheel.log"
+            log="$GITHUB_WORKSPACE/skeepto-python/linux-wheel.log"
+            grep -E "error:|fatal error:|undefined reference|ninja: build stopped" "$log" | head -40 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
             exit "$code"
           fi
 
