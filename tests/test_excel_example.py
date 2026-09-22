@@ -10,7 +10,7 @@ from pathlib import Path
 from skeepto import SpreadSheet
 
 _EXCEL_DIR = Path(__file__).resolve().parent.parent / "excel"
-_XLSX_PATH = _EXCEL_DIR / "exemple.xlsx"
+_XLSX_PATH = _EXCEL_DIR / "example.xlsx"
 
 _SHEET_FORMATS = "Formats"
 _SHEET_FUNCTIONS = "Fonctions"
@@ -242,7 +242,7 @@ def test_excel_example():
     _EXCEL_DIR.mkdir(parents=True, exist_ok=True)
     wPath = str(_XLSX_PATH)
     with SpreadSheet() as wSs:
-        wSs.new_workbook("exemple")
+        wSs.new_workbook("example")
         wSs.set_lang("us")
         assert wSs.add_sheet(_SHEET_FORMATS, "")
         assert wSs.add_sheet(_SHEET_FUNCTIONS, "")
@@ -258,6 +258,16 @@ def test_excel_example():
     print(wPath)
 
 
+def test_read_xlsx():
+    wPath = str(_XLSX_PATH)
+    with SpreadSheet() as wSs:
+        assert wSs.open_xlsx(wPath)
+        _assert_example(wSs)
+        assert wSs.save_xlsx(wPath)
+    assert _XLSX_PATH.is_file()
+    print(wPath)
+
 if __name__ == "__main__":
     test_excel_example()
+    test_read_xlsx()
     print("ok")
