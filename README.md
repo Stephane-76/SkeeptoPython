@@ -50,7 +50,7 @@ git push origin v0.1.0
 Example after that release — pick the wheel for **your** OS (Mac → `macosx_*_arm64`):
 
 ```bash
-pip install https://github.com/Stephane-76/SkeeptoPython/releases/download/v0.1.0/skeepto-0.1.0-cp312-cp312-macosx_14_0_arm64.whl
+pip install https://github.com/Stephane-76/SkeeptoPython/releases/download/v0.1.0/skeepto-0.1.0-cp312-cp312-macosx_26_0_arm64.whl
 ```
 
 Other Python versions still use the source build below (compiler required).

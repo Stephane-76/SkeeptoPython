@@ -35,7 +35,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
-	set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum macOS deployment version" FORCE)
+	# GitHub's Homebrew libs are built for the runner OS (macOS 26). A wheel
+	# tagged 14.0 cannot vendor those dylibs. Honor MACOSX_DEPLOYMENT_TARGET.
+	if(DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} AND NOT "$ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
+		set(CMAKE_OSX_DEPLOYMENT_TARGET "$ENV{MACOSX_DEPLOYMENT_TARGET}" CACHE STRING "Minimum macOS deployment version" FORCE)
+	elseif(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+		set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum macOS deployment version" FORCE)
+	endif()
 endif()
 
 # --- Engine (prebuilt) -------------------------------------------------------

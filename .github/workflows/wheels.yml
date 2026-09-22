@@ -15,29 +15,40 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v5
+      - name: Checkout skeepto-python
+        uses: actions/checkout@v5
         with:
-          python-version: "3.12"
+          path: skeepto-python
 
-      - name: Build manylinux wheels
-        uses: pypa/cibuildwheel@v2.23.3
-        env:
-          SKEEPTO_ENGINE_TOKEN: ${{ secrets.SKEEPTO_ENGINE_TOKEN }}
-          CIBW_ENVIRONMENT_PASS_LINUX: SKEEPTO_ENGINE_TOKEN
+      - name: Checkout skeepto-engine
+        uses: actions/checkout@v5
+        with:
+          repository: Stephane-76/SkeeptoEngine
+          path: skeepto-engine
+          token: ${{ secrets.SKEEPTO_ENGINE_TOKEN || github.token }}
+
+      - name: Wheel in manylinux
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/skeepto-python:/io" \
+            -v "$GITHUB_WORKSPACE/skeepto-engine:/engine" \
+            -e SK_ENGINE_DIR=/engine \
+            quay.io/pypa/manylinux_2_28_x86_64:2025.04.19-1 \
+            bash /io/scripts/manylinux-wheel.sh
 
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-linux
-          path: wheelhouse/*.whl
+          path: skeepto-python/wheelhouse/*.whl
 
   macos:
     runs-on: macos-latest
     env:
       SK_ENGINE_DIR: ${{ github.workspace }}/skeepto-engine
       CMAKE_ARGS: -DSK_ENGINE_DIR=${{ github.workspace }}/skeepto-engine
-      MACOSX_DEPLOYMENT_TARGET: "14.0"
+      # Homebrew on macos-latest is built for that OS. delocate rejects a
+      # macosx_14 wheel that vendors those dylibs.
+      MACOSX_DEPLOYMENT_TARGET: "26.0"
     steps:
       - name: Checkout skeepto-python
         uses: actions/checkout@v5
