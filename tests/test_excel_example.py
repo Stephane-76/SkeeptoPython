@@ -233,9 +233,10 @@ def _assert_example(sSs):
     assert sSs.get_value("D6", _SHEET_FORMATS) == "12.50%"
     assert sSs.get_value("D9", _SHEET_FORMATS) == "09/21/2026"
     assert sSs.get_value("D10", _SHEET_FORMATS) == "2026-09-21"
-    wChartJson = sSs.json_floating_objects_for_sheet(_SHEET_FUNCTIONS, _SHEET_FUNCTIONS)
-    assert "SalesChart" in wChartJson
-    assert "SkCellClassLineChart" in wChartJson
+
+
+def _chart_json(sSs):
+    return sSs.json_floating_objects_for_sheet(_SHEET_FUNCTIONS, _SHEET_FUNCTIONS)
 
 
 def test_excel_example():
@@ -253,6 +254,9 @@ def test_excel_example():
         wSs.recalculate_all()
         _freeze_text_column(wSs)
         _assert_example(wSs)
+        wChartJson = _chart_json(wSs)
+        assert "SalesChart" in wChartJson
+        assert "SkCellClassLineChart" in wChartJson
         assert wSs.save_xlsx(wPath)
     assert _XLSX_PATH.is_file()
     print(wPath)
@@ -263,6 +267,10 @@ def test_read_xlsx():
     with SpreadSheet() as wSs:
         assert wSs.open_xlsx(wPath)
         _assert_example(wSs)
+        # Export writes cNvPr name "Chart N", then import builds ChartChart_N.
+        # The floating-object name SalesChart is not stored in the xlsx.
+        wChartJson = _chart_json(wSs)
+        assert "SkCellClassLineChart" in wChartJson
         assert wSs.save_xlsx(wPath)
     assert _XLSX_PATH.is_file()
     print(wPath)
