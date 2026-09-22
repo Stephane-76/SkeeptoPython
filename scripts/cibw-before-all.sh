@@ -3,27 +3,27 @@
 # Only the three libraries: the Python extension compiles SkExcel sources itself.
 set -eux
 
-# Image PATH may omit the devtoolset when the entrypoint is not applied.
-for wEnable in /opt/rh/gcc-toolset-14/enable /opt/rh/gcc-toolset-13/enable /opt/rh/gcc-toolset-12/enable; do
-	if [[ -f "$wEnable" ]]; then
-		# shellcheck disable=SC1090
-		source "$wEnable"
-		break
-	fi
-done
-
-echo "=== compiler $(command -v g++ || true) ==="
-g++ --version || true
-
-# AlmaLinux 8 (manylinux_2_28): libzip / pugixml live in EPEL + powertools.
+# AlmaLinux 8 ships gcc 8, which cannot build this C++20 tree (make then exits 2).
 if command -v yum >/dev/null 2>&1; then
 	yum install -y epel-release
 	yum install -y dnf-plugins-core || true
 	yum config-manager --set-enabled powertools || true
-	yum install -y git gcc-c++ make cmake zlib-devel libzip-devel pugixml-devel
+	yum install -y git make cmake zlib-devel libzip-devel pugixml-devel \
+		gcc-toolset-13 gcc-toolset-13-gcc-c++
 fi
 
-echo "=== cmake $(command -v cmake || true) ==="
+if [[ -f /opt/rh/gcc-toolset-13/enable ]]; then
+	set +u
+	# shellcheck disable=SC1091
+	source /opt/rh/gcc-toolset-13/enable
+	set -u
+fi
+
+echo "=== compiler $(command -v g++) ==="
+g++ --version
+g++ -dumpversion | awk -F. '{ if ($1 < 10) exit 1 }'
+
+echo "=== cmake $(command -v cmake) ==="
 cmake --version
 
 ENGINE="${SK_ENGINE_DIR:-/tmp/skeepto-engine}"

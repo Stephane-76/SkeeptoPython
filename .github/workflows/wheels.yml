@@ -29,12 +29,19 @@ jobs:
 
       - name: Wheel in manylinux
         run: |
-          docker run --rm \
+          set +e
+          docker run --rm --entrypoint bash \
             -v "$GITHUB_WORKSPACE/skeepto-python:/io" \
             -v "$GITHUB_WORKSPACE/skeepto-engine:/engine" \
             -e SK_ENGINE_DIR=/engine \
             quay.io/pypa/manylinux_2_28_x86_64:2025.04.19-1 \
-            bash /io/scripts/manylinux-wheel.sh
+            /io/scripts/manylinux-wheel.sh 2>&1 | tee "$GITHUB_WORKSPACE/skeepto-python/linux-wheel.log"
+          code=${PIPESTATUS[0]}
+          if [[ "$code" -ne 0 ]]; then
+            echo "::error::manylinux wheel failed with exit ${code}"
+            tail -n 60 "$GITHUB_WORKSPACE/skeepto-python/linux-wheel.log"
+            exit "$code"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
